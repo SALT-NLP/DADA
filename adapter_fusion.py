@@ -10,12 +10,13 @@ import matplotlib.pyplot as plt
 from datasets import load_dataset
 from collections import defaultdict
 from transformers.adapters.composition import Fuse
-from transformers import logging, RobertaTokenizer, RobertaConfig, RobertaAdapterModel, TrainingArguments, AdapterTrainer, EvalPrediction
+import transformers
+from transformers import RobertaTokenizer, RobertaConfig, RobertaAdapterModel, TrainingArguments, AdapterTrainer, EvalPrediction
 from huggingface_hub import login
 from torch.utils.data import DataLoader
 from scipy.special import softmax
 
-logging.set_verbosity_error()
+transformers.logging.set_verbosity_error()
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 login('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')
@@ -32,7 +33,7 @@ def compute_accuracy(p: EvalPrediction):
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--task_name', default='MNLI')
-    parser.add_argument('--transformation_rules_path', default='/n/pfister_lab2/Lab/yanchenliu/tmp/transformation_rules_list.json')
+    parser.add_argument('--transformation_rules_path', default='../tmp/transformation_rules_list.json')
     parser.add_argument('--job_id', default='2')
     parser.add_argument("--local_rank", type=int, default=0)
     args = parser.parse_args()
@@ -50,7 +51,8 @@ if __name__=="__main__":
     adapters_path = "./Adapters"
 
     train_dataset = 'MULTI'
-    predict_dialects = ['MULTI', 'AppE', 'ChcE', 'CollSgE', 'IndE', 'VALUE']
+    test_dialects = ['MULTI', 'AppE', 'ChcE', 'CollSgE', 'IndE', 'VALUE', 'GLUE']
+    predict_dialects = ['MULTI', 'AppE', 'ChcE', 'CollSgE', 'IndE', 'VALUE', 'GLUE']
     analysis_split = 'test_matched' if task_name =='mnli' else 'test'
     analysis_split = 'train'
 
@@ -90,6 +92,7 @@ if __name__=="__main__":
     # Load the pre-trained adapters we want to fuse
     for adapter_name in adapter_names:
         model.load_adapter(adapters_path + "/" + adapter_name, with_head=False)
+
     #! Add a null adapter
     model.add_adapter('null')
     #! Add the lexical adapter trained on AAVE
@@ -112,6 +115,14 @@ if __name__=="__main__":
     # Unfreeze and activate fusion setup
     model.train_adapter_fusion(adapter_setup)
 
+    ##! count parameter number
+    print('total number: ' + str(sum(torch.numel(p) for p in model.parameters())))
+
+    trainable_model_parameters = filter(lambda p: p.requires_grad, model.parameters())
+    trainable_params_num = sum([np.prod(p.size()) for p in trainable_model_parameters])
+    print('trainable number: ' + str(trainable_params_num))
+    ##!
+
     training_args = TrainingArguments(
         learning_rate=5e-5,
         num_train_epochs=5,
@@ -121,7 +132,7 @@ if __name__=="__main__":
         save_steps=4000,
         evaluation_strategy= "steps",
         save_strategy="steps",
-        save_total_limit=1,
+        save_total_limit=2,
         output_dir= output_path + "/log",
         overwrite_output_dir=True,
         load_best_model_at_end=True,
@@ -160,10 +171,37 @@ if __name__=="__main__":
     trainer.log_metrics("eval", metrics)
     trainer.save_metrics("eval", metrics)
 
+    # test
+    for dialect in test_dialects:
+        split = 'dev' if task_name != 'mnli' else 'dev_matched'
+        if dialect == "VALUE":
+            split = 'validation_matched' if task_name == 'mnli' else split
+            test_dataset = load_dataset('SALT-NLP/' + task_name + '_' + dialect, split= split)
+        elif dialect == "GLUE":
+            split = 'validation_matched' if task_name == 'mnli' else split
+            test_dataset = load_dataset('glue', task_name, split= split)
+        else:
+            test_dataset = load_dataset('liuyanchen1015/' + task_name + '_' + dialect, split= split)
+        test_dataset = test_dataset.map(encode_batch, batched=True)
+        # The transformers model expects the target class column to be named "labels"
+        test_dataset = test_dataset.rename_column("label", "labels")
+        # Transform to pytorch tensors and only output the required columns
+        test_dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
+
+        metrics = trainer.evaluate(test_dataset)
+        trainer.log_metrics(dialect + '_' + split, metrics)
+        trainer.save_metrics(dialect + '_' + split, metrics)
+
     # predict
     for dialect in predict_dialects:
         split = 'test' if task_name != 'mnli' else 'test_matched'
-        predict_dataset = load_dataset('liuyanchen1015/' + task_name + '_' + dialect, split= split)
+        if dialect == "VALUE":
+            predict_dataset = load_dataset('SALT-NLP/' + task_name + '_' + dialect, split= split)
+        elif dialect == "GLUE":
+            predict_dataset = load_dataset('glue', task_name, split= split)
+        else:
+            predict_dataset = load_dataset('liuyanchen1015/' + task_name + '_' + dialect, split= split)
+
         predict_dataset = predict_dataset.map(encode_batch, batched=True)
         # Transform to pytorch tensors and only output the required columns
         predict_dataset.set_format(type="torch", columns=["input_ids", "attention_mask"])
@@ -181,11 +219,10 @@ if __name__=="__main__":
                         item = id2label[item]
                     writer.write(f"{index}\t{item}\n")
 
-
-
     # save the model
-    model.save_adapter_fusion(output_path + "/saved", adapter_setup, with_head='fusion_head')
-    model.save_all_adapters(output_path + "/saved")
+    if torch.distributed.get_rank() == 0:
+        model.save_adapter_fusion(output_path + "/saved", adapter_setup, with_head=True)
+        model.save_all_adapters(output_path + "/saved")
 
     # # analysis
     # print('Analyzing...')
