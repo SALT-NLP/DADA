@@ -1,0 +1,21 @@
+{
+  "config": {
+    "activation_function": "tanh",
+    "bias": true,
+    "head_type": "classification",
+    "label2id": {
+      "contradiction": 2,
+      "entailment": 0,
+      "neutral": 1
+    },
+    "layers": 2,
+    "num_labels": 3,
+    "use_pooler": false
+  },
+  "hidden_size": 768,
+  "model_class": "RobertaModelWithHeads",
+  "model_name": "WillHeld/roberta-base-mnli",
+  "model_type": "roberta",
+  "name": "mnli_reduplicate_interrogative",
+  "version": "3.1.0"
+}
