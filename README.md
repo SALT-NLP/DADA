@@ -42,7 +42,8 @@ Specify the license under which the code is released. If applicable, mention any
 
 If you use this code or find it helpful for your research, please consider citing the paper:
 
-@misc{liu2023dada,
+```
+@inproceedings{liu2023dada,
     title={DADA: Dialect Adaptation via Dynamic Aggregation of Linguistic Rules},
     author={Yanchen Liu and William Held and Diyi Yang},
     year={2023},
@@ -50,9 +51,10 @@ If you use this code or find it helpful for your research, please consider citin
     archivePrefix={arXiv},
     primaryClass={cs.CL}
 }
+```
 
-## Contact Information
+## Contact
 
-Feel free to contact me at yanchenliu@g.harvard.edu if you have any questions, issues, or collaboration requests.
+Feel free to contact Yanchen at yanchenliu@g.harvard.edu, if you have any questions about the paper.
 
 
