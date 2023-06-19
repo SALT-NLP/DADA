@@ -6,7 +6,6 @@ from transformers import RobertaTokenizer, RobertaConfig, RobertaModelWithHeads
 from transformers import TrainingArguments, AdapterTrainer, EvalPrediction
 import argparse
 
-login('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')
 transformers.logging.set_verbosity_error()
 
 task2id2label={
