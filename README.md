@@ -6,9 +6,9 @@ This repository contains the code implementation for the paper titled "[DADA: Di
 
 The code implementation will come soon.
 
-![process](img/process.png)
+<!-- ![process](img/process.png)
 
-<!-- 
+
 ## Table of Contents
 
 - [Abstract](#abstract)
