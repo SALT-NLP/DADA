@@ -6,8 +6,6 @@ This repository contains the code implementation for the paper titled "[DADA: Di
     <img src="img/DADA.png" alt="Panda" width="500">
 </p>
 
-The description for code implementation will come soon.
-
 <!-- ![process](img/process.png) -->
 
 
@@ -30,15 +28,10 @@ conda activate dada
 conda install --file requirements.txt
 ```
 
-<!--
+
 ## Usage
+The description for code usage will come soon.
 
-Explain how to use the code and provide examples if applicable. Describe the different functionalities, options, or parameters available. Include any specific instructions or guidelines for running experiments or reproducing results.
-
-## License
-
-Specify the license under which the code is released. If applicable, mention any open-source licenses or restrictions.
- -->
  
 ## Citation and Contact
 
