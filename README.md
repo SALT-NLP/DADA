@@ -6,9 +6,6 @@ This repository contains the code implementation for the paper titled "[DADA: Di
     <img src="img/DADA.png" alt="Panda" width="500">
 </p>
 
-<!-- ![process](img/process.png) -->
-
-
 ## Table of Contents
 
 0. [Abstract](#abstract)
@@ -23,14 +20,16 @@ Existing large language models (LLMs) that mainly focus on Standard American Eng
 please run the command below to install the dependent libraries.
 
 ```
-conda create -n dada python=3.8
-conda activate dada
+conda create -n DADA python=3.8
+conda activate DADA
 conda install --file requirements.txt
 ```
 
 
 ## Usage
 The description for code usage will come soon.
+
+![process](img/process.png)
 
  
 ## Citation and Contact
