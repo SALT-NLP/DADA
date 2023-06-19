@@ -1,9 +1,9 @@
-# [img](img/panda_high_resolution.png) DADA: Dialect Adaptation via Dynamic Aggregation of Linguistic Rules
+# [img](img/panda.png) DADA: Dialect Adaptation via Dynamic Aggregation of Linguistic Rules
 
 This repository contains the code implementation for the paper titled "[DADA: Dialect Adaptation via Dynamic Aggregation of Linguistic Rules](https://arxiv.org/abs/2305.13406)". 
 The code implementation will come soon.
-![process](img/process.png)
-![DADA](img/dada.png)
+![process](img/process.pdf)
+![DADA](img/dada.pdf)
 <!-- 
 ## Table of Contents
 
