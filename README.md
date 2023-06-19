@@ -2,9 +2,9 @@
 
 This repository contains the code implementation for the paper titled "[DADA: Dialect Adaptation via Dynamic Aggregation of Linguistic Rules](https://arxiv.org/abs/2305.13406)". 
 
-<center>
+<div style="text-align: center;">
 <img src="img/DADA.png" alt="Panda" width="500"> 
-</center>
+</div>
 
 The code implementation will come soon.
 
