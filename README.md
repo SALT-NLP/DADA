@@ -42,15 +42,14 @@ Specify the license under which the code is released. If applicable, mention any
 
 If you use this code or find it helpful for your research, please consider citing the paper:
 
-@misc{liu2023dada,  
-      title={DADA: Dialect Adaptation via Dynamic Aggregation of Linguistic Rules},  
-      author={Yanchen Liu and William Held and Diyi Yang},  
-      year={2023},  
-      eprint={2305.13406},  
-      archivePrefix={arXiv},  
-      primaryClass={cs.CL}. 
+@misc{liu2023dada,
+    title={DADA: Dialect Adaptation via Dynamic Aggregation of Linguistic Rules},
+    author={Yanchen Liu and William Held and Diyi Yang},
+    year={2023},
+    eprint={2305.13406},
+    archivePrefix={arXiv},
+    primaryClass={cs.CL}
 }
-
 
 ## Contact Information
 
