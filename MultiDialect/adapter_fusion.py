@@ -16,7 +16,6 @@ from huggingface_hub import login
 from torch.utils.data import DataLoader
 from scipy.special import softmax
 
-set_seed(3407)
 transformers.logging.set_verbosity_error()
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
