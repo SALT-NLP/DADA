@@ -52,13 +52,13 @@ if __name__=="__main__":
     task_name = task_name.lower().replace('-','')
     transformation_rules_path = args.transformation_rules_path
     num_transformation_rules = args.num_transformation_rules
-    learning_rate = args.learning_rate
-    train_epochs = args.train_epochs
-    batch_size = args.batch_size
+    learning_rate = int(args.learning_rate)
+    train_epochs = int(args.train_epochs)
+    batch_size = int(args.batch_size)
 
     adapter_names = json.load(open(transformation_rules_path, 'r'))
     if num_transformation_rules:
-        adapter_names = adapter_names[:eval(num_transformation_rules)]
+        adapter_names = adapter_names[:int(num_transformation_rules)]
     adapter_names = [task_name + "_" + section for section in adapter_names]
 
     if args.output_path is None:
