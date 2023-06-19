@@ -100,6 +100,7 @@ ALLOWED_NESTINGS = {
 # Add a whitelist of models for those here.
 SUPPORTED_MODELS = {
     Parallel: [
+        "albert",
         "bert",
         "roberta",
         "distilbert",
@@ -112,6 +113,7 @@ SUPPORTED_MODELS = {
         "t5",
         "vit",
         "xlm-roberta",
+        "bert-generation",
     ],
 }
 
@@ -200,7 +202,7 @@ def adjust_tensors_for_parallel(hidden_states, *tensors):
     """
     outputs = []
     for tensor in tensors:
-        if tensor is not None and hidden_states.shape[0] != tensor.shape[0]:
+        if tensor is not None and hidden_states.shape[0] >= tensor.shape[0]:
             repeats = [1] * len(tensor.shape)
             repeats[0] = hidden_states.shape[0] // tensor.shape[0]
             new_tensor = tensor.repeat(*repeats)

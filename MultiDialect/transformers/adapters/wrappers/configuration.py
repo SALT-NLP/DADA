@@ -1,9 +1,15 @@
+import copy
+
 from ...configuration_utils import PretrainedConfig
+from ...models.clip.configuration_clip import CLIPConfig
 from ...models.encoder_decoder.configuration_encoder_decoder import EncoderDecoderConfig
 from ..configuration import ModelAdaptersConfig
 
 
 CONFIG_CLASS_KEYS_MAPPING = {
+    "albert": {
+        "classifier_dropout": "classifier_dropout_prob",
+    },
     "bart": {
         "num_attention_heads": "encoder_attention_heads",
         "hidden_size": "d_model",
@@ -12,9 +18,18 @@ CONFIG_CLASS_KEYS_MAPPING = {
     },
     "beit": {},
     "bert": {},
+    "clip_vision_model": {
+        "hidden_dropout_prob": "dropout",
+        "attention_probs_dropout_prob": "attention_dropout",
+    },
+    "clip_text_model": {
+        "hidden_dropout_prob": "dropout",
+        "attention_probs_dropout_prob": "attention_dropout",
+    },
     "distilbert": {
         "hidden_dropout_prob": "dropout",
         "attention_probs_dropout_prob": "attention_dropout",
+        "classifier_dropout": "seq_classif_dropout",
     },
     "gpt2": {
         "hidden_dropout_prob": "resid_pdrop",
@@ -41,6 +56,7 @@ CONFIG_CLASS_KEYS_MAPPING = {
     "vit": {},
     "xlm_roberta": {},
 }
+SUBMODEL_NAMES = {"clip": ["vision_config", "text_config"], "encoder-decoder": ["encoder", "decoder"]}
 
 
 def wrap_config(config: PretrainedConfig) -> PretrainedConfig:
@@ -68,6 +84,8 @@ def wrap_config(config: PretrainedConfig) -> PretrainedConfig:
     for fusion_adapter_names in fusion_models:
         config.adapters.add_fusion(fusion_adapter_names, config=fusion_config)
 
+    # Make sure each class has its own attribute_map
+    type(config).attribute_map = copy.deepcopy(type(config).attribute_map)
     # Ensure missing keys are in class
     if config.model_type in CONFIG_CLASS_KEYS_MAPPING:
         for key, value in CONFIG_CLASS_KEYS_MAPPING[config.model_type].items():
@@ -84,7 +102,11 @@ def wrap_config(config: PretrainedConfig) -> PretrainedConfig:
         wrap_config(config.decoder)
         config.decoder.adapters = config.encoder.adapters
         config.adapters = config.encoder.adapters
-
+    elif isinstance(config, CLIPConfig):
+        wrap_config(config.vision_config)
+        wrap_config(config.text_config)
+        config.vision_config.adapters = config.adapters
+        config.text_config.adapters = config.adapters
     config.is_adaptable = True
 
     return config

@@ -78,15 +78,15 @@ class AdapterTrainer(Trainer):
                 or isinstance(self.model.active_adapters, AdapterCompositionBlock)
                 and any([isinstance(child, Fuse) for child in self.model.active_adapters.children])
             )
-        if model.active_adapters is None:
+        if self.model.active_adapters is None:
             raise ValueError(
                 "Expected a model with an active adapter setup."
                 "If you want to fully finetune the model use the Trainer class."
             )
-        if (self.label_names is None or len(self.label_names) < 1) and model.active_head is not None:
+        if (self.label_names is None or len(self.label_names) < 1) and self.model.active_head is not None:
             all_label_names = set()
-            for head in model._active_heads:
-                all_label_names |= set(model.heads[head].get_label_names())
+            for head in self.model._active_heads:
+                all_label_names |= set(self.model.heads[head].get_label_names())
             self.label_names = list(all_label_names)
 
     def create_optimizer(self):
@@ -182,6 +182,7 @@ class AdapterTrainer(Trainer):
             # will be resumed in deepspeed_init
             pass
         else:
+            adapter_loaded = False
             if os.path.isdir(resume_from_checkpoint):
                 adapter_loaded = self._load_adapters(resume_from_checkpoint)
                 self._load_adapter_fusions(resume_from_checkpoint)
@@ -217,6 +218,28 @@ class AdapterTrainer(Trainer):
                 ):
                     self.model.load_head(os.path.join(resume_from_checkpoint, file_name))
 
+    def _load_best_model(self):
+        model = self.model_wrapped if is_sagemaker_mp_enabled() else self.model
+        logger.info(
+            f"Loading best adapter(s) from {self.state.best_model_checkpoint} (score: {self.state.best_metric})."
+        )
+        # attempt to re-load all adapters from checkpoint
+        for adapter in model.config.adapters.adapters:
+            adapter_dir = os.path.join(self.state.best_model_checkpoint, adapter)
+            if os.path.exists(adapter_dir):
+                model.load_adapter(adapter_dir)
+        if self.train_adapter_fusion:
+            logger.info(
+                f"Loading best adapter fusion(s) from {self.state.best_model_checkpoint} (score:"
+                f" {self.state.best_metric})."
+            )
+            # attempt to re-load all adapter fusions from checkpoint
+            for fusion in model.config.adapters.fusions:
+                fusion_dir = os.path.join(self.state.best_model_checkpoint, fusion)
+                if os.path.exists(fusion_dir):
+                    model.load_adapter_fusion(fusion_dir)
+        model.to(self.args.device)
+
 
 class AdapterTrainerCallback(TrainerCallback):
     def __init__(self, trainer):
@@ -232,33 +255,13 @@ class AdapterTrainerCallback(TrainerCallback):
                 " method"
             )
 
-    def on_train_end(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
-        model = kwargs.pop("model")
-        if args.load_best_model_at_end and state.best_model_checkpoint is not None:
-
-            logger.info(f"Loading best adapter(s) from {state.best_model_checkpoint} (score: {state.best_metric}).")
-            # attempt to re-load all adapters from checkpoint
-            for adapter in model.config.adapters.adapters:
-                adapter_dir = os.path.join(state.best_model_checkpoint, adapter)
-                if os.path.exists(adapter_dir):
-                    model.load_adapter(adapter_dir)
-            if self.trainer.train_adapter_fusion:
-                logger.info(
-                    f"Loading best adapter fusion(s) from {state.best_model_checkpoint} (score: {state.best_metric})."
-                )
-                # attempt to re-load all adapter fusions from checkpoint
-                for fusion in model.config.adapters.fusions:
-                    fusion_dir = os.path.join(state.best_model_checkpoint, fusion)
-                    if os.path.exists(fusion_dir):
-                        model.load_adapter_fusion(fusion_dir)
-            model.to(args.device)
-
     def on_step_end(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
         # apply adapter fusion weight regularization on the value matrix
         model = kwargs.pop("model")
         if self.trainer.train_adapter_fusion:
             fusion_reg_loss = model.base_model.get_fusion_regularization_loss()
-            fusion_reg_loss.backward()
+            if fusion_reg_loss is not None:
+                fusion_reg_loss.backward()
 
 
 class Seq2SeqAdapterTrainer(AdapterTrainer, Seq2SeqTrainer):

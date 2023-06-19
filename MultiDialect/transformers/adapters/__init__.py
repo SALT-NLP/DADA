@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "3.2.0a0"
+__version__ = "3.2.1"
 
 from typing import TYPE_CHECKING
 
@@ -82,9 +82,11 @@ _import_structure = {
     "model_mixin": [
         "EmbeddingAdaptersMixin",
         "InvertibleAdaptersMixin",
+        "InvertibleAdaptersWrapperMixin",
         "ModelAdaptersMixin",
         "ModelWithHeadsAdaptersMixin",
     ],
+    "models.albert": ["AlbertAdapterModel"],
     "models.auto": [
         "ADAPTER_MODEL_MAPPING",
         "MODEL_WITH_HEADS_MAPPING",
@@ -100,6 +102,7 @@ _import_structure = {
         "BertAdapterModel",
         "BertModelWithHeads",
     ],
+    "models.bert_generation": ["BertGenerationAdapterModel"],
     "models.deberta": ["DebertaAdapterModel"],
     "models.debertaV2": ["DebertaV2AdapterModel"],
     "models.distilbert": [
@@ -131,7 +134,7 @@ _import_structure = {
     "trainer": ["AdapterTrainer", "Seq2SeqAdapterTrainer"],
     "training": [
         "AdapterArguments",
-        "MultiLingAdapterArguments",
+        "setup_adapter_training",
     ],
     "utils": [
         "ADAPTER_CACHE",
@@ -200,13 +203,16 @@ if TYPE_CHECKING:
     from .model_mixin import (
         EmbeddingAdaptersMixin,
         InvertibleAdaptersMixin,
+        InvertibleAdaptersWrapperMixin,
         ModelAdaptersMixin,
         ModelWithHeadsAdaptersMixin,
     )
+    from .models.albert import AlbertAdapterModel
     from .models.auto import ADAPTER_MODEL_MAPPING, MODEL_WITH_HEADS_MAPPING, AutoAdapterModel, AutoModelWithHeads
     from .models.bart import BartAdapterModel, BartModelWithHeads
     from .models.beit import BeitAdapterModel
     from .models.bert import BertAdapterModel, BertModelWithHeads
+    from .models.bert_generation import BertGenerationAdapterModel
     from .models.deberta import DebertaAdapterModel
     from .models.debertaV2 import DebertaV2AdapterModel
     from .models.distilbert import DistilBertAdapterModel, DistilBertModelWithHeads
@@ -218,7 +224,7 @@ if TYPE_CHECKING:
     from .models.vit import ViTAdapterModel
     from .models.xlm_roberta import XLMRobertaAdapterModel, XLMRobertaModelWithHeads
     from .trainer import AdapterTrainer, Seq2SeqAdapterTrainer
-    from .training import AdapterArguments, MultiLingAdapterArguments
+    from .training import AdapterArguments, setup_adapter_training
     from .utils import (
         ADAPTER_CACHE,
         AdapterInfo,

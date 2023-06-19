@@ -22,10 +22,10 @@ from .hub_mixin import PushAdapterToHubMixin
 from .layer import AdapterLayer, AdapterLayerBase
 from .loading import AdapterFusionLoader, AdapterLoader, PredictionHeadLoader, WeightsLoader
 from .lora import LoRALayer
-from .modeling import Adapter, GLOWCouplingBlock, NICECouplingBlock
+from .modeling import Adapter, GLOWCouplingBlock, NICECouplingBlock, init_shared_parameters
 from .prefix_tuning import PrefixTuningPool, PrefixTuningShim
 from .utils import EMBEDDING_FILE, TOKENIZER_PATH, inherit_doc
-from .wrappers.configuration import wrap_config
+from .wrappers.configuration import SUBMODEL_NAMES, wrap_config
 
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,8 @@ class InvertibleAdaptersMixin:
         self.invertible_adapters = nn.ModuleDict(dict())
 
         # Make sure config is wrapped
-        self.config = wrap_config(self.config)
+        if hasattr(self, "config"):
+            self.config = wrap_config(self.config)
 
     def add_invertible_adapter(self, adapter_name: str):
         """
@@ -51,6 +52,7 @@ class InvertibleAdaptersMixin:
         """
         if adapter_name in self.invertible_adapters:
             raise ValueError(f"Model already contains an adapter module for '{adapter_name}'.")
+        embedding_size = getattr(self.config, "embedding_size", self.config.hidden_size)
         adapter_config = self.config.adapters.match(
             adapter_name,
             config_type=AdapterConfig,
@@ -59,13 +61,13 @@ class InvertibleAdaptersMixin:
         if adapter_config and adapter_config["inv_adapter"]:
             if adapter_config["inv_adapter"] == "nice":
                 inv_adap = NICECouplingBlock(
-                    [[self.config.hidden_size]],
+                    [[embedding_size]],
                     non_linearity=adapter_config["non_linearity"],
                     reduction_factor=adapter_config["inv_adapter_reduction_factor"],
                 )
             elif adapter_config["inv_adapter"] == "glow":
                 inv_adap = GLOWCouplingBlock(
-                    [[self.config.hidden_size]],
+                    [[embedding_size]],
                     non_linearity=adapter_config["non_linearity"],
                     reduction_factor=adapter_config["inv_adapter_reduction_factor"],
                 )
@@ -102,6 +104,54 @@ class InvertibleAdaptersMixin:
         return hidden_states
 
 
+class InvertibleAdaptersWrapperMixin:
+    """
+    Mixin for Transformer models supporting invertible adapters in a child module. When applying this mixin, set
+    `invertible_adapters_base_name` to the name of the child module that includes `InvertibleAdaptersMixin`.
+    """
+
+    invertible_adapters_base_name = ""
+
+    @property
+    def invertible_adapters_base(self):
+        return getattr(self, self.invertible_adapters_base_name, None)
+
+    @property
+    def invertible_adapters(self):
+        if self.invertible_adapters_base is not None:
+            return self.invertible_adapters_base.invertible_adapters
+        return None
+
+    def add_invertible_adapter(self, adapter_name: str):
+        """
+        Adds an invertible adapter module for the adapter with the given name. If the given adapter does not specify an
+        invertible adapter config, this method does nothing.
+
+        Args:
+            adapter_name (str): The name of the adapter for which to add an invertible adapter module.
+        """
+        if self.invertible_adapters_base is not None:
+            self.invertible_adapters_base.add_invertible_adapter(adapter_name)
+
+    def delete_invertible_adapter(self, adapter_name: str):
+        if self.invertible_adapters_base is not None:
+            self.invertible_adapters_base.delete_invertible_adapter(adapter_name)
+
+    def get_invertible_adapter(self):
+        if self.invertible_adapters_base is not None:
+            return self.invertible_adapters_base.get_invertible_adapter()
+        return None
+
+    def enable_invertible_adapters(self, adapter_names):
+        if self.invertible_adapters_base is not None:
+            self.invertible_adapters_base.enable_invertible_adapters(adapter_names)
+
+    def invertible_adapters_forward(self, hidden_states, rev=False):
+        if self.invertible_adapters_base is not None:
+            return self.invertible_adapters_base.invertible_adapters_forward(hidden_states, rev=rev)
+        return hidden_states
+
+
 class EmbeddingAdaptersMixin:
     """Mixin for Transformer models adding support for dynamically switching embeddings."""
 
@@ -109,6 +159,10 @@ class EmbeddingAdaptersMixin:
         super().__init__(*args, **kwargs)
         self.loaded_embeddings = {}
         self._active_embedding = "default"
+
+        # Make sure config is wrapped
+        if hasattr(self, "config"):
+            self.config = wrap_config(self.config)
 
     def load_embeddings(self, path: str, name: str):
         """
@@ -151,14 +205,17 @@ class EmbeddingAdaptersMixin:
                 the reference embedding to use for initializing the embeddings of tokens present in the newly created
                 embedding
             reference_tokenizer: the tokenizer providing the vocab for the reference embedding
-            embedding_dim: the dimension of the embeddings (if None the hidden_size from the config is used)
-
+            embedding_dim:
+                the dimension of the embeddings (if None the embedding_size, or if this doesn't exist the hidden_size,
+                from the config is used)
         """
         if name in self.loaded_embeddings:
             raise ValueError("An embedding with the name {} already exists".format(name))
-        if embedding_dim is None:
-            embedding_dim = self.config.hidden_size
-        embedding = nn.Embedding(len(tokenizer), embedding_dim)
+        if embedding_dim is not None:
+            embedding_size = embedding_dim
+        else:
+            embedding_size = getattr(self.config, "embedding_size", self.config.hidden_size)
+        embedding = nn.Embedding(len(tokenizer), embedding_size)
         # Use same initialization as base Transformer model
         embedding.weight.data.normal_(mean=0.0, std=0.02)
         if embedding.padding_idx is not None:
@@ -230,6 +287,7 @@ class EmbeddingAdaptersMixin:
         """
         self.loaded_embeddings[self.active_embeddings] = self.get_input_embeddings()
         self.set_input_embeddings(self.loaded_embeddings[name])
+        self.config.vocab_size = self.loaded_embeddings[name].num_embeddings
         self._active_embedding = name
 
     @property
@@ -241,8 +299,8 @@ class EmbeddingAdaptersWrapperMixin:
     def load_embeddings(self, path: str, name: str):
         return self.base_model.load_embeddings(path, name)
 
-    def add_embeddings(self, name, tokenizer, reference_embedding=None, reference_tokenizer=None, embedding_dim=None):
-        return self.base_model.add_embeddings(name, tokenizer, reference_embedding, reference_tokenizer, embedding_dim)
+    def add_embeddings(self, name, tokenizer, reference_embedding=None, reference_tokenizer=None):
+        return self.base_model.add_embeddings(name, tokenizer, reference_embedding, reference_tokenizer)
 
     def delete_embeddings(self, name):
         return self.base_model.delete_embeddings(name)
@@ -330,7 +388,7 @@ class ModelAdaptersMixin(PushAdapterToHubMixin, ABC):
                 for param in self.base_model.shared_parameters[adapter_name].values():
                     param.requires_grad = True
 
-        if isinstance(self, InvertibleAdaptersMixin):
+        if isinstance(self, InvertibleAdaptersMixin) or isinstance(self, InvertibleAdaptersWrapperMixin):
             self.enable_invertible_adapters(adapter_setup.flatten())
         # use the adapters to be trained by default in every forward pass
         self.set_active_adapters(adapter_setup)
@@ -408,8 +466,8 @@ class ModelAdaptersMixin(PushAdapterToHubMixin, ABC):
         Adds a new adapter module of the specified type to the model.
 
         Args:
-            adapter_name (str): The name of the adapter module to be added. config (str or dict or AdapterConfigBase,
-            optional): The adapter configuration, can be either:
+            adapter_name (str): The name of the adapter module to be added.
+            config (str or dict or AdapterConfigBase, optional): The adapter configuration, can be either:
 
                 - the string identifier of a pre-defined configuration dictionary
                 - a configuration dictionary specifying the full config
@@ -420,8 +478,7 @@ class ModelAdaptersMixin(PushAdapterToHubMixin, ABC):
                 Set the adapter to be the active one. By default (False),
             the adapter is added but not activated.
         """
-        if isinstance(config, dict):
-            config = AdapterConfigBase.load(config)  # ensure config is ok and up-to-date
+        config = AdapterConfigBase.load(config)  # ensure config is ok and up-to-date
         # In case adapter already exists and we allow overwriting, explicitly delete the existing one first
         if overwrite_ok and adapter_name in self.config.adapters:
             self.delete_adapter(adapter_name)
@@ -438,15 +495,35 @@ class ModelAdaptersMixin(PushAdapterToHubMixin, ABC):
         """Helper method that performs the actual parameter additions when adding a new adapter."""
         self.apply_to_adapter_layers(lambda i, layer: layer.add_adapter(adapter_name, i))
         # PHM Layer
-        if self.config.adapters.match(adapter_name, AdapterConfig, location_key="phm_layer"):
-            self.base_model.shared_parameters[adapter_name] = (
-                list(self.get_adapter(adapter_name)[0].values())[0].adapter_down[0].init_shared_parameters()
-            )
+        adapter_config = self.config.adapters.match(adapter_name, AdapterConfig, location_key="phm_layer")
+        if adapter_config:
+            adapter_module = list(self.get_adapter(adapter_name)[0].values())[0]
+            # if multiple adapters with same location key exist they are returned as a modulelist
+            if isinstance(adapter_module, nn.ModuleList):
+                adapter_module = adapter_module[0]
+            if adapter_config["shared_phm_rule"] or adapter_config["shared_W_phm"]:
+                if self.config.model_type in SUBMODEL_NAMES:
+                    hidden_sizes = [
+                        getattr(self.config, key).hidden_size for key in SUBMODEL_NAMES[self.config.model_type]
+                    ]
+                    if all(hidden_sizes[0] == h for h in hidden_sizes):
+                        self.base_model.shared_parameters[adapter_name] = init_shared_parameters(
+                            adapter_config, hidden_sizes[0], self.device
+                        )
+                    else:
+                        raise ValueError(
+                            "The model has different hidden sizes {}. Sharing comapcter weights is only possible if"
+                            " the hidden_sizes match.".format(hidden_sizes)
+                        )
+                else:
+                    self.base_model.shared_parameters[adapter_name] = init_shared_parameters(
+                        adapter_config, self.config.hidden_size, self.device
+                    )
         # Prefix Tuning
         for module in self.modules():
             if isinstance(module, PrefixTuningPool):
                 module.confirm_prefix(adapter_name)
-        if isinstance(self, InvertibleAdaptersMixin):
+        if isinstance(self, InvertibleAdaptersMixin) or isinstance(self, InvertibleAdaptersWrapperMixin):
             self.add_invertible_adapter(adapter_name)
 
     def add_fusion(self, adapter_names: Union[Fuse, list], adapter_fusion_config=None, override_kwargs=None):
@@ -516,7 +593,7 @@ class ModelAdaptersMixin(PushAdapterToHubMixin, ABC):
         # PHM Layer
         if adapter_name in self.base_model.shared_parameters:
             del self.base_model.shared_parameters[adapter_name]
-        if isinstance(self, InvertibleAdaptersMixin):
+        if isinstance(self, InvertibleAdaptersMixin) or isinstance(self, InvertibleAdaptersWrapperMixin):
             self.delete_invertible_adapter(adapter_name)
         # Reset active adapters if this was the only active adapter
         if self.active_adapters == Stack(adapter_name):
@@ -748,11 +825,11 @@ class ModelAdaptersMixin(PushAdapterToHubMixin, ABC):
             save_directory (str): Path to a directory where the AdapterFusion layers should be saved.
         """
         os.makedirs(save_directory, exist_ok=True)
-        for idx, name in enumerate(self.config.adapters.fusions):
+        for name in self.config.adapters.fusions:
             adapter_fusion_config = self.config.adapters.get_fusion(name)
             h = get_adapter_config_hash(adapter_fusion_config)
             save_path = join(save_directory, \
-                ('adapter_fusion_' + str(idx)) if len(self.config.adapters.fusions) > 1 else 'adapter_fusion') #!
+                ('adapter_fusion_' + str(idx)) if len(self.config.adapters.fusions) > 1 else 'adapter_fusion') #!!! change here to save the adapter fusion layer
             if meta_dict:
                 meta_dict.update({"config_id": h})
             else:
@@ -800,15 +877,19 @@ class ModelAdaptersMixin(PushAdapterToHubMixin, ABC):
         context.adapter_fusion_attentions = defaultdict(dict)
 
     def get_fusion_regularization_loss(self):
-        reg_loss = 0.0
+        reg_loss = None
 
         target = torch.zeros((self.config.hidden_size, self.config.hidden_size)).fill_diagonal_(1.0).to(self.device)
         for i, layer in self.iter_layers():
             for module in layer.modules():
                 if isinstance(module, AdapterLayer):
                     for _, layer_fusion in module.adapter_fusion_layer.items():
-                        if hasattr(layer_fusion, "value"):
-                            reg_loss += 0.01 * (target - layer_fusion.value.weight).pow(2).sum()
+                        if hasattr(layer_fusion, "value") and layer_fusion.value.weight.requires_grad:
+                            layer_reg_loss = 0.01 * (target - layer_fusion.value.weight).pow(2).sum()
+                            if reg_loss is None:
+                                reg_loss = layer_reg_loss
+                            else:
+                                reg_loss += layer_reg_loss
 
         return reg_loss
 
@@ -828,7 +909,9 @@ class ModelAdaptersMixin(PushAdapterToHubMixin, ABC):
         # global weights are saved at index -1
         if name in self.base_model.shared_parameters:
             destination[-1]["shared"] = self.base_model.shared_parameters[name]
-        if isinstance(self, InvertibleAdaptersMixin) and name in self.invertible_adapters:
+        if (
+            isinstance(self, InvertibleAdaptersMixin) or isinstance(self, InvertibleAdaptersWrapperMixin)
+        ) and name in self.invertible_adapters:
             destination[-1]["invertible"] = self.invertible_adapters[name]
 
         # use a custom index to ensure numbering is from 0 to N layers
