@@ -8,43 +8,40 @@ This repository contains the code implementation for the paper titled "[DADA: Di
 
 The description for code implementation will come soon.
 
-<!-- ![process](img/process.png)
+<!-- ![process](img/process.png) -->
 
 
 ## Table of Contents
 
 - [Abstract](#abstract)
-- [Requirements](#requirements)
 - [Installation](#installation)
 - [Usage](#usage)
-- [Results](#results)
 - [License](#license)
 - [Citation](#citation)
+- [Contact](#contact)
 
 ## Abstract
-
-Provide a brief summary of the paper, highlighting the problem statement, methodology, and key findings. Mention the significance or contributions of the research.
-
-## Requirements
-
-List the software dependencies, libraries, and versions required to run the code. Include instructions for installing any specific tools or packages needed.
+Existing large language models (LLMs) that mainly focus on Standard American English (SAE) often lead to significantly worse performance when being applied to other English dialects. While existing mitigations tackle discrepancies for individual target dialects, they assume access to high-accuracy dialect identification systems. The boundaries between dialects are inherently flexible, making it difficult to categorize language into discrete predefined categories. In this paper, we propose DADA (Dialect Adaptation via Dynamic Aggregation), a modular approach to imbue SAE-trained models with multi-dialectal robustness by composing adapters which handle specific linguistic features. The compositional architecture of DADA allows for both targeted adaptation to specific dialect variants and simultaneous adaptation to various dialects. We show that DADA is effective for both single task and instruction finetuned language models, offering an extensible and interpretable framework for adapting existing LLMs to different English dialects.
 
 ## Installation
+please run the command below to install the dependent libraries.
 
-Provide step-by-step instructions on how to set up the project and install any necessary dependencies. Include any additional configuration or setup required.
+```
+conda create -n dada python=3.8
+conda activate dada
+conda install --file requirements.txt
+```
 
+<!--
 ## Usage
 
 Explain how to use the code and provide examples if applicable. Describe the different functionalities, options, or parameters available. Include any specific instructions or guidelines for running experiments or reproducing results.
-
-## Results
-
-Provide an overview of the results obtained from running the code. Include any figures, tables, or visualizations that showcase the findings. If the results are too extensive, consider providing a link to a separate document or a section in the paper where the results are discussed in detail.
 
 ## License
 
 Specify the license under which the code is released. If applicable, mention any open-source licenses or restrictions.
  -->
+ 
 ## Citation
 
 If you find this repository helpful, please cite our paper.
