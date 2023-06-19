@@ -6,7 +6,7 @@ This repository contains the code implementation for the paper titled "[DADA: Di
     <img src="img/DADA.png" alt="Panda" width="500">
 </p>
 
-The code implementation will come soon.
+The description for code implementation will come soon.
 
 <!-- ![process](img/process.png)
 
