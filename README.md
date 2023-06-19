@@ -27,7 +27,7 @@ conda install --file requirements.txt
 
 
 ## Usage
-The description for code usage will come soon.
+<!-- The description for code usage will come soon. -->
 
 ![process](img/process.png)
 
