@@ -19,7 +19,6 @@ from scipy.special import softmax
 transformers.logging.set_verbosity_error()
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-login('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')
 
 task2id2label={
     'sst2': { 0: "👎", 1: "👍"},
