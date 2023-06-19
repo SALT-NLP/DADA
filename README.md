@@ -1,6 +1,6 @@
 # Paper Title
 
-This repository contains the code implementation for the paper titled "DADA: Dialect Adaptation via Dynamic Aggregation of Linguistic Rules[https://arxiv.org/abs/2305.13406]". 
+This repository contains the code implementation for the paper titled "[DADA: Dialect Adaptation via Dynamic Aggregation of Linguistic Rules](https://arxiv.org/abs/2305.13406)". 
 The code implementation will come soon.
 
 <!-- 
