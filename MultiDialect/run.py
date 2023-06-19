@@ -16,11 +16,9 @@ from huggingface_hub import login
 from torch.utils.data import DataLoader
 from scipy.special import softmax
 
-set_seed(3407)
 transformers.logging.set_verbosity_error()
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-login('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')
 
 task2id2label={
     'sst2': { 0: "👎", 1: "👍"},
@@ -37,12 +35,11 @@ if __name__=="__main__":
     parser.add_argument('--task_name', default='MNLI')
     parser.add_argument('--adapters_path', default='./Adapters')
     parser.add_argument('--transformation_rules_path', default='transformation_rules_list.json')
-    parser.add_argument('--num_transformation_rules', default=None)
-    parser.add_argument('--job_id', default='2')
-    parser.add_argument("--learning_rate", default=2.5e-5)
-    parser.add_argument("--train_epochs", default=5)
-    parser.add_argument("--batch_size", default=64)
-    parser.add_argument("--local_rank", type=int, default=0)
+    parser.add_argument('--num_transformation_rules', type=int, default=None)
+    parser.add_argument('--job_id', type=int, default='2')
+    parser.add_argument("--learning_rate", type=float, default=2.5e-5)
+    parser.add_argument("--train_epochs", type=int, default=5)
+    parser.add_argument("--batch_size", type=int, default=64)
     args = parser.parse_args()
     print(' '.join(f'{k}={v}' for k, v in vars(args).items()))
 
@@ -155,9 +152,6 @@ if __name__=="__main__":
         metric_for_best_model="eval_acc",
         remove_unused_columns=False, # This line is important to ensure the dataset labels are properly passed to the model
 
-        local_rank=int(os.environ.get('LOCAL_RANK', -1)),
-        save_on_each_node=True,
-
         report_to='wandb',
         run_name=task_name + "_" + str(args.job_id),
 
@@ -257,6 +251,5 @@ if __name__=="__main__":
                     writer.write(f"{index}\t{item}\n")
 
     # save the model
-    if torch.distributed.get_rank() == 0:
-        model.save_adapter_fusion(output_path + "/saved", adapter_setup, with_head=True)
-        model.save_all_adapters(output_path + "/saved")
+    model.save_adapter_fusion(output_path + "/saved", adapter_setup, with_head=True)
+    model.save_all_adapters(output_path + "/saved")
