@@ -58,7 +58,7 @@ if __name__=="__main__":
 
     adapter_names = json.load(open(transformation_rules_path, 'r'))
     if num_transformation_rules:
-        adapter_names = adapter_names[:num_transformation_rules]
+        adapter_names = adapter_names[:eval(num_transformation_rules)]
     adapter_names = [task_name + "_" + section for section in adapter_names]
 
     if args.output_path is None:
