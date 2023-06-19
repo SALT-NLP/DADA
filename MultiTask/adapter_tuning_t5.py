@@ -46,7 +46,6 @@ from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
 from huggingface_hub import login
 import nvidia_smi
-login('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')
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.26.0")
