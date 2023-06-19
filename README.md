@@ -45,7 +45,7 @@ Specify the license under which the code is released. If applicable, mention any
  -->
 ## Citation
 
-If you use this code or find it helpful for your research, please consider citing the paper:
+If you find this repository helpful, please cite our paper.
 
 ```
 @inproceedings{liu2023dada,
