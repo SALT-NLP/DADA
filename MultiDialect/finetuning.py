@@ -7,8 +7,6 @@ from transformers import RobertaTokenizer, RobertaConfig, RobertaForSequenceClas
 from transformers import TrainingArguments, Trainer, EvalPrediction, AdapterTrainer, set_seed
 import argparse
 
-set_seed(42)
-login('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')
 transformers.logging.set_verbosity_error()
 
 task2id2label={
