@@ -40,10 +40,8 @@ If you find this repository helpful, please cite our paper.
 @inproceedings{liu2023dada,
     title={DADA: Dialect Adaptation via Dynamic Aggregation of Linguistic Rules},
     author={Yanchen Liu and William Held and Diyi Yang},
+    booktitle={Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing},
     year={2023},
-    eprint={2305.13406},
-    archivePrefix={arXiv},
-    primaryClass={cs.CL}
 }
 ```
 
